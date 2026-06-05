@@ -38,8 +38,20 @@ const sqliteDb = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
+let dbInitialized = false;
+let initPromise = null;
+
+async function ensureDbInitialized() {
+  if (dbInitialized) return;
+  if (!initPromise) {
+    initPromise = initDb().then(() => { dbInitialized = true; });
+  }
+  await initPromise;
+}
+
 const dbQuery = {
   async run(sql, params = []) {
+    await ensureDbInitialized();
     return new Promise((resolve, reject) => {
       sqliteDb.run(sql, params, function (err) {
         if (err) reject(err);
@@ -48,6 +60,7 @@ const dbQuery = {
     });
   },
   async all(sql, params = []) {
+    await ensureDbInitialized();
     return new Promise((resolve, reject) => {
       sqliteDb.all(sql, params, (err, rows) => {
         if (err) reject(err);
@@ -56,6 +69,7 @@ const dbQuery = {
     });
   },
   async get(sql, params = []) {
+    await ensureDbInitialized();
     return new Promise((resolve, reject) => {
       sqliteDb.get(sql, params, (err, row) => {
         if (err) reject(err);
@@ -67,11 +81,20 @@ const dbQuery = {
 
 // Initialize schema
 async function initDb() {
+  const runInternal = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      sqliteDb.run(sql, params, function (err) {
+        if (err) reject(err);
+        else resolve({ id: this.lastID, changes: this.changes });
+      });
+    });
+  };
+
   try {
-    await dbQuery.run('PRAGMA foreign_keys = ON;');
+    await runInternal('PRAGMA foreign_keys = ON;');
 
     // Users Table
-    await dbQuery.run(`
+    await runInternal(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -83,7 +106,7 @@ async function initDb() {
     `);
 
     // Candidates Table
-    await dbQuery.run(`
+    await runInternal(`
       CREATE TABLE IF NOT EXISTS candidates (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -97,7 +120,7 @@ async function initDb() {
     `);
 
     // Jobs Table
-    await dbQuery.run(`
+    await runInternal(`
       CREATE TABLE IF NOT EXISTS jobs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         recruiter_id INTEGER NOT NULL,
@@ -114,7 +137,7 @@ async function initDb() {
     `);
 
     // Applications Table
-    await dbQuery.run(`
+    await runInternal(`
       CREATE TABLE IF NOT EXISTS applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         job_id INTEGER NOT NULL,
@@ -134,9 +157,7 @@ async function initDb() {
     console.error('Error initializing database tables:', error);
   }
 }
-
-initDb();
-
+ensureDbInitialized();
 module.exports = {
   db: sqliteDb,
   dbQuery
