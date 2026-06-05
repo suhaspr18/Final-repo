@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartRecruit - AI-Powered DBMS Recruitment System</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Header / Navigation -->
+  <header class="main-header">
+    <div class="logo-container">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+      </div>
+      <span class="logo-text">SmartRecruit <span class="badge-ai">AI-DBMS</span></span>
+    </div>
+    
+    <nav class="nav-links" id="nav-links">
+      <button class="nav-btn active" id="btn-nav-jobs" onclick="switchTab('jobs-tab')">Explore Jobs</button>
+      <button class="nav-btn" id="btn-nav-dashboard" onclick="switchTab('dashboard-tab')" style="display: none;">My Dashboard</button>
+      <button class="nav-btn" id="btn-nav-stats" onclick="switchTab('stats-tab')">System Analytics</button>
+      <button class="nav-btn" id="btn-nav-sql" onclick="switchTab('sql-tab')">SQL Console</button>
+    </nav>
+
+    <div class="auth-action-area" id="auth-header-actions">
+      <!-- Dynamically filled by JavaScript -->
+      <button class="btn-primary" onclick="showAuthModal('login')">Sign In</button>
+    </div>
+  </header>
+
+  <!-- Main App Layout Container -->
+  <main class="main-content">
+    
+    <!-- 1. JOBS EXPLORE TAB -->
+    <section id="jobs-tab" class="tab-panel active">
+      <div class="hero-section">
+        <h1>Find Your Next Opportunity with <span class="text-gradient">AI Smart Matching</span></h1>
+        <p>Our intelligent system parses resumes, checks skill compliance, aligns with job experience requirements, and ranks applicants instantly.</p>
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="job-search-input" placeholder="Search by title, skills or location..." onkeyup="filterJobs()">
+        </div>
+      </div>
+
+      <div class="jobs-layout">
+        <div class="jobs-list-container">
+          <div class="section-title-bar">
+            <h2>Available Job Openings</h2>
+            <span class="count-badge" id="jobs-count">0 Jobs</span>
+          </div>
+          <div class="jobs-grid" id="jobs-grid">
+            <!-- Dynamically populated -->
+            <div class="loading-state">Loading active job listings...</div>
+          </div>
+        </div>
+
+        <div class="job-detail-panel" id="job-detail-panel">
+          <div class="no-selection-state">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            <h3>Select a job listing</h3>
+            <p>Click on any job card to view detailed specifications, required skills, salary information, and apply.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. RECRUITER / CANDIDATE DASHBOARD TAB -->
+    <section id="dashboard-tab" class="tab-panel">
+      <!-- CANDIDATE DASHBOARD -->
+      <div id="candidate-dashboard" style="display: none;">
+        <div class="dashboard-grid">
+          <!-- Left side: Profile Management -->
+          <div class="glass-card profile-card">
+            <h2 class="card-title">My Smart Candidate Profile</h2>
+            <form id="profile-form" onsubmit="saveCandidateProfile(event)">
+              <div class="form-group">
+                <label for="prof-title">Professional Title</label>
+                <input type="text" id="prof-title" placeholder="e.g. React Front-End Developer" required>
+              </div>
+              <div class="form-group">
+                <label for="prof-skills">Skills (Comma-separated)</label>
+                <input type="text" id="prof-skills" placeholder="React, Node.js, JavaScript, HTML, CSS" required>
+                <small class="helper-text">List key technologies that the system can match against jobs.</small>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="prof-exp">Experience (Years)</label>
+                  <input type="number" id="prof-exp" min="0" max="40" required>
+                </div>
+                <div class="form-group">
+                  <label for="prof-edu">Education Details</label>
+                  <input type="text" id="prof-edu" placeholder="e.g. B.Tech Computer Science" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="prof-resume">Resume Summary / Text</label>
+                <textarea id="prof-resume" rows="6" placeholder="Paste your professional experience summary here..."></textarea>
+              </div>
+              <button type="submit" class="btn-primary w-full">Save and Update Profile</button>
+            </form>
+          </div>
+
+          <!-- Right side: Applications List -->
+          <div class="glass-card">
+            <h2 class="card-title">My Job Applications</h2>
+            <div class="applications-list" id="candidate-applications-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECRUITER DASHBOARD -->
+      <div id="recruiter-dashboard" style="display: none;">
+        <div class="recruiter-layout">
+          <!-- Left side: Job listings & creation -->
+          <div class="recruiter-left-panel">
+            <div class="glass-card job-create-card">
+              <h2 class="card-title">Create a New Job Listing</h2>
+              <form id="job-creation-form" onsubmit="createJobListing(event)">
+                <div class="form-group">
+                  <label for="job-title">Job Title</label>
+                  <input type="text" id="job-title" placeholder="e.g. Senior Backend Developer" required>
+                </div>
+                <div class="form-group">
+                  <label for="job-skills">Required Skills (Comma-separated)</label>
+                  <input type="text" id="job-skills" placeholder="Node.js, SQL, Express, Docker" required>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="job-exp">Required Experience (Years)</label>
+                    <input type="number" id="job-exp" min="0" max="30" value="2">
+                  </div>
+                  <div class="form-group">
+                    <label for="job-location">Location</label>
+                    <input type="text" id="job-location" placeholder="e.g. San Francisco (Remote)">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="job-salary">Salary details</label>
+                  <input type="text" id="job-salary" placeholder="e.g. $100,000 - $120,000">
+                </div>
+                <div class="form-group">
+                  <label for="job-desc">Job Description</label>
+                  <textarea id="job-desc" rows="4" placeholder="Detail the duties and daily expectations..." required></textarea>
+                </div>
+                <button type="submit" class="btn-success w-full">Publish Job Post</button>
+              </form>
+            </div>
+
+            <div class="glass-card">
+              <h2 class="card-title">My Managed Job Openings</h2>
+              <div class="recruiter-jobs-list" id="recruiter-jobs-list">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Right side: Candidate Applicants List -->
+          <div class="recruiter-right-panel glass-card" id="recruiter-applicants-panel">
+            <div class="no-selection-state">
+              <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <h3>No Job Selected</h3>
+              <p>Click on one of your managed job openings on the left to view applicants sorted by AI resume matching score.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. SYSTEM STATS & DBMS REPORTING TAB -->
+    <section id="stats-tab" class="tab-panel">
+      <div class="hero-section">
+        <h1>Recruitment Database Analytics</h1>
+        <p>Live aggregates and data distribution reports fetched directly using aggregated SQL relational database queries.</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-overview-grid" id="stats-summary-grid">
+        <div class="stat-card">
+          <div class="stat-icon bg-blue">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+          </div>
+          <div class="stat-data">
+            <span class="stat-value" id="stat-total-jobs">0</span>
+            <span class="stat-label">Total Job Listings</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-green">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <div class="stat-data">
+            <span class="stat-value" id="stat-total-candidates">0</span>
+            <span class="stat-label">Candidate Profiles</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-yellow">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </div>
+          <div class="stat-data">
+            <span class="stat-value" id="stat-total-applications">0</span>
+            <span class="stat-label">Total Applications</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-purple">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
+          <div class="stat-data">
+            <span class="stat-value" id="stat-avg-score">0%</span>
+            <span class="stat-label">Average Match Score</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid mt-6">
+        <!-- Visual Distribution of Applications by Status -->
+        <div class="glass-card">
+          <h2 class="card-title">Application Funnel Distribution</h2>
+          <div class="chart-container" id="status-distribution-chart">
+            <!-- Custom Dynamic Chart Bars -->
+          </div>
+        </div>
+
+        <!-- DBMS Table Analysis -->
+        <div class="glass-card">
+          <h2 class="card-title">Popular Job Postings (Relational Join Analytics)</h2>
+          <p class="card-subtitle mb-4">Calculated using SQL aggregates: <code>SELECT j.title, COUNT(a.id) FROM jobs GROUP BY j.id</code></p>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Job Title</th>
+                  <th>Applications Count</th>
+                  <th>Avg. Match Score</th>
+                </tr>
+              </thead>
+              <tbody id="popular-jobs-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SQL CONSOLE / PLAYGROUND TAB -->
+    <section id="sql-tab" class="tab-panel">
+      <div class="sql-playground-layout">
+        <!-- Sidebar containing Schema Info -->
+        <div class="sql-schema-sidebar glass-card">
+          <h3>Database Schema Explorer</h3>
+          <p class="text-secondary small">These are the live tables in the SQLite database file (<code>recruitment.db</code>).</p>
+          
+          <div class="schema-list">
+            <div class="schema-item">
+              <div class="schema-header" onclick="toggleSchemaDetail('schema-users')">
+                <strong>users</strong> <span class="table-badge">Table</span>
+              </div>
+              <ul class="schema-columns" id="schema-users">
+                <li><code>id</code> (INTEGER PK)</li>
+                <li><code>name</code> (TEXT)</li>
+                <li><code>email</code> (TEXT UNIQUE)</li>
+                <li><code>role</code> (TEXT: candidate/recruiter)</li>
+                <li><code>created_at</code> (DATETIME)</li>
+              </ul>
+            </div>
+            
+            <div class="schema-item">
+              <div class="schema-header" onclick="toggleSchemaDetail('schema-candidates')">
+                <strong>candidates</strong> <span class="table-badge">Table</span>
+              </div>
+              <ul class="schema-columns" id="schema-candidates">
+                <li><code>id</code> (INTEGER PK)</li>
+                <li><code>user_id</code> (INTEGER FK)</li>
+                <li><code>title</code> (TEXT)</li>
+                <li><code>skills</code> (TEXT)</li>
+                <li><code>experience_years</code> (INTEGER)</li>
+                <li><code>education</code> (TEXT)</li>
+                <li><code>resume_text</code> (TEXT)</li>
+              </ul>
+            </div>
+
+            <div class="schema-item">
+              <div class="schema-header" onclick="toggleSchemaDetail('schema-jobs')">
+                <strong>jobs</strong> <span class="table-badge">Table</span>
+              </div>
+              <ul class="schema-columns" id="schema-jobs">
+                <li><code>id</code> (INTEGER PK)</li>
+                <li><code>recruiter_id</code> (INTEGER FK)</li>
+                <li><code>title</code> (TEXT)</li>
+                <li><code>description</code> (TEXT)</li>
+                <li><code>required_skills</code> (TEXT)</li>
+                <li><code>required_experience</code> (INTEGER)</li>
+                <li><code>location</code> (TEXT)</li>
+                <li><code>salary</code> (TEXT)</li>
+                <li><code>status</code> (TEXT)</li>
+                <li><code>created_at</code> (DATETIME)</li>
+              </ul>
+            </div>
+
+            <div class="schema-item">
+              <div class="schema-header" onclick="toggleSchemaDetail('schema-applications')">
+                <strong>applications</strong> <span class="table-badge">Table</span>
+              </div>
+              <ul class="schema-columns" id="schema-applications">
+                <li><code>id</code> (INTEGER PK)</li>
+                <li><code>job_id</code> (INTEGER FK)</li>
+                <li><code>candidate_id</code> (INTEGER FK)</li>
+                <li><code>match_score</code> (REAL)</li>
+                <li><code>match_analysis</code> (TEXT JSON)</li>
+                <li><code>status</code> (TEXT)</li>
+                <li><code>applied_at</code> (DATETIME)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="preset-queries">
+            <h4>Sample Queries (Click to load)</h4>
+            <button class="btn-preset" onclick="loadPresetQuery('SELECT * FROM users;')">Select all users</button>
+            <button class="btn-preset" onclick="loadPresetQuery('SELECT * FROM jobs JOIN users ON jobs.recruiter_id = users.id;')">Join Jobs and Recruiters</button>
+            <button class="btn-preset" onclick="loadPresetQuery('SELECT u.name, c.title, a.match_score, j.title FROM applications a JOIN candidates c ON a.candidate_id = c.id JOIN users u ON c.user_id = u.id JOIN jobs j ON a.job_id = j.id ORDER BY a.match_score DESC;')">Join Applicant details</button>
+            <button class="btn-preset" onclick="loadPresetQuery('SELECT status, COUNT(*), AVG(match_score) FROM applications GROUP BY status;')">Average score by application status</button>
+          </div>
+        </div>
+
+        <!-- Main Query Console -->
+        <div class="sql-editor-container">
+          <div class="glass-card h-full flex-col">
+            <div class="console-header">
+              <h2>SQL Query Terminal</h2>
+              <span class="status-indicator-green">Connected: SQLite v3</span>
+            </div>
+            <p class="text-secondary small mb-4">Execute direct SQL statements against your live SQLite database. Works with both query statements (<code>SELECT</code>) and updates (<code>UPDATE</code>, <code>INSERT</code>, <code>DELETE</code>).</p>
+            
+            <div class="editor-wrapper">
+              <textarea id="sql-query-editor" placeholder="Write your SQL command here... (e.g. SELECT * FROM users;)"></textarea>
+            </div>
+            
+            <div class="editor-actions">
+              <button class="btn-secondary" onclick="clearQueryEditor()">Clear Editor</button>
+              <button class="btn-primary" onclick="executeSQLQuery()">Run SQL Command</button>
+            </div>
+
+            <div class="sql-results-panel" id="sql-results-panel">
+              <div class="no-selection-state">
+                <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <p>Run a query to view results here</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==========================================
+       AUTHENTICATION MODAL
+       ========================================== -->
+  <div id="auth-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content glass-card">
+      <button class="close-modal-btn" onclick="closeAuthModal()">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+
+      <div class="modal-header">
+        <h2 id="auth-modal-title">Sign In</h2>
+        <p id="auth-modal-subtitle">Welcome back! Please enter your details.</p>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+        <!-- Tab Switch (Login vs Signup) -->
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</button>
+          <button type="button" class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+        </div>
+
+        <div class="form-group" id="form-group-name" style="display: none;">
+          <label for="auth-name">Full Name / Company Name</label>
+          <input type="text" id="auth-name" placeholder="e.g. Suhas K. or TechCorp Ltd.">
+        </div>
+
+        <div class="form-group">
+          <label for="auth-email">Email Address</label>
+          <input type="email" id="auth-email" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" placeholder="••••••••" required>
+        </div>
+
+        <div class="form-group" id="form-group-role" style="display: none;">
+          <label for="auth-role">Account Role Type</label>
+          <div class="role-selector">
+            <label class="role-option">
+              <input type="radio" name="auth-role" value="candidate" checked>
+              <span>Job Candidate</span>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="auth-role" value="recruiter">
+              <span>Recruiter / HR</span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary w-full mt-4" id="auth-submit-btn">Continue</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Javascript -->
+  <script src="app.js"></script>
+</body>
+</html>
