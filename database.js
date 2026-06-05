@@ -1,99 +1,74 @@
-const { Pool } = require('pg');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-const isPostgres = !!process.env.DATABASE_URL;
+// Determine if we are running in Vercel Serverless environment
+const isVercel = !!process.env.VERCEL;
 
-let pgPool;
-let sqliteDb;
+let dbPath;
 
-if (isPostgres) {
-  pgPool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Required for most hosted Postgres databases (e.g., Vercel, Supabase)
-  });
-  console.log('Connected to PostgreSQL database.');
-} else {
-  const dbPath = path.join(__dirname, 'recruitment.db');
-  sqliteDb = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-      console.error('Error opening database:', err.message);
-    } else {
-      console.log('Connected to the local SQLite recruitment database.');
+if (isVercel) {
+  // Vercel Serverless Environment has a read-only filesystem except for the /tmp folder.
+  // We MUST write to /tmp to prevent "read-only filesystem" crashes.
+  dbPath = '/tmp/recruitment.db';
+  
+  // The original bundled DB file in the project directory (which is read-only)
+  const bundledDbPath = path.join(__dirname, 'recruitment.db');
+  
+  // If the temporary writeable DB doesn't exist yet, copy the bundled one over!
+  // This preserves any seeded data you deployed with.
+  if (!fs.existsSync(dbPath) && fs.existsSync(bundledDbPath)) {
+    try {
+      fs.copyFileSync(bundledDbPath, dbPath);
+      console.log('Copied bundled SQLite database to /tmp for write access.');
+    } catch (e) {
+      console.error('Failed to copy bundled database:', e);
     }
-  });
+  }
+} else {
+  // Local development
+  dbPath = path.join(__dirname, 'recruitment.db');
 }
 
-// Helper to convert SQLite query syntax to PostgreSQL syntax
-function convertToPgSql(sql) {
-  let i = 1;
-  // Replace ? with $1, $2, etc.
-  let pgSql = sql.replace(/\?/g, () => `$${i++}`);
-  
-  // Replace schema differences
-  pgSql = pgSql.replace(/INTEGER PRIMARY KEY AUTOINCREMENT/ig, 'SERIAL PRIMARY KEY');
-  pgSql = pgSql.replace(/DATETIME DEFAULT CURRENT_TIMESTAMP/ig, 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-  pgSql = pgSql.replace(/PRAGMA foreign_keys = ON;/ig, ''); // Not needed in Postgres
-  
-  // Add RETURNING id for INSERT statements to match SQLite lastID behavior
-  if (pgSql.trim().toUpperCase().startsWith('INSERT') && !pgSql.toUpperCase().includes('RETURNING ID')) {
-    pgSql += ' RETURNING id';
+const sqliteDb = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log(`Connected to the SQLite recruitment database at ${dbPath}`);
   }
-  
-  return pgSql;
-}
+});
 
 const dbQuery = {
   async run(sql, params = []) {
-    if (isPostgres) {
-      const pgSql = convertToPgSql(sql);
-      const res = await pgPool.query(pgSql, params);
-      return { id: res.rows[0]?.id || 0, changes: res.rowCount };
-    } else {
-      return new Promise((resolve, reject) => {
-        sqliteDb.run(sql, params, function (err) {
-          if (err) reject(err);
-          else resolve({ id: this.lastID, changes: this.changes });
-        });
+    return new Promise((resolve, reject) => {
+      sqliteDb.run(sql, params, function (err) {
+        if (err) reject(err);
+        else resolve({ id: this.lastID, changes: this.changes });
       });
-    }
+    });
   },
   async all(sql, params = []) {
-    if (isPostgres) {
-      const pgSql = convertToPgSql(sql);
-      const res = await pgPool.query(pgSql, params);
-      return res.rows;
-    } else {
-      return new Promise((resolve, reject) => {
-        sqliteDb.all(sql, params, (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        });
+    return new Promise((resolve, reject) => {
+      sqliteDb.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
       });
-    }
+    });
   },
   async get(sql, params = []) {
-    if (isPostgres) {
-      const pgSql = convertToPgSql(sql);
-      const res = await pgPool.query(pgSql, params);
-      return res.rows[0];
-    } else {
-      return new Promise((resolve, reject) => {
-        sqliteDb.get(sql, params, (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
+    return new Promise((resolve, reject) => {
+      sqliteDb.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
       });
-    }
+    });
   }
 };
 
-// Initialize schema (Works for both SQLite and Postgres via our wrapper)
+// Initialize schema
 async function initDb() {
   try {
-    if (!isPostgres) {
-      await dbQuery.run('PRAGMA foreign_keys = ON;');
-    }
+    await dbQuery.run('PRAGMA foreign_keys = ON;');
 
     // Users Table
     await dbQuery.run(`
@@ -163,6 +138,6 @@ async function initDb() {
 initDb();
 
 module.exports = {
-  db: isPostgres ? pgPool : sqliteDb,
+  db: sqliteDb,
   dbQuery
 };
