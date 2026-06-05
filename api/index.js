@@ -2,14 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const { dbQuery } = require('./database');
+const { dbQuery } = require('../database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
 // AI Resume Matching Algorithm
@@ -425,13 +424,16 @@ app.post('/api/admin/query', async (req, res) => {
   }
 });
 
-// Root route to serve Frontend
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // Export the Express API for Vercel Serverless Functions
 if (process.env.NODE_ENV !== 'production') {
+  // Serve static files locally
+  app.use(express.static(path.join(__dirname, '../public')));
+  
+  // Root route to serve Frontend locally
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
+  });
+
   // Start Server Locally
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
