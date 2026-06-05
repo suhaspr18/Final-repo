@@ -58,8 +58,12 @@ async function seed() {
     await dbQuery.run('DELETE FROM candidates');
     await dbQuery.run('DELETE FROM users');
     
-    // Reset AUTOINCREMENT counters
-    await dbQuery.run("DELETE FROM sqlite_sequence WHERE name IN ('users', 'candidates', 'jobs', 'applications')");
+    // Reset AUTOINCREMENT counters (SQLite only)
+    try {
+      await dbQuery.run("DELETE FROM sqlite_sequence WHERE name IN ('users', 'candidates', 'jobs', 'applications')");
+    } catch (e) {
+      // Ignored: Postgres uses sequences and does not have sqlite_sequence table
+    }
 
     const hashedPassword = await bcrypt.hash('password123', 10);
 
